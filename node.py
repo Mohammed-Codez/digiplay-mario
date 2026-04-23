@@ -14,5 +14,6 @@ class Node:
         return f"w: {self.weights}, b: {self.bias}"
 
     def calc(self, inputs: list[float]) -> float:
-        calcled_inp: float = np.dot(inputs, self.weights) + self.bias
-        return calcled_inp / (1 + exp(calcled_inp))
+        weighted_sum: float = np.dot(inputs, self.weights) + self.bias
+        print(weighted_sum)
+        return weighted_sum / (1 + exp(-weighted_sum))
