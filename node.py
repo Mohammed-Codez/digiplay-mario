@@ -33,7 +33,12 @@ a: {self.activator.__name__}
 """
 
     def __repr__(self) -> str:
-        return f"w: {self.weights}, b: {self.bias}"
+        return f"""
+i: {self.input_count},
+w: {self.weights},
+b: {self.bias},
+a: {self.activator.__name__}
+"""
     
     def generate_random_weights(self, min=-1, max=1) -> None:
         self.weights = np.random.uniform(min, max, self.input_count)

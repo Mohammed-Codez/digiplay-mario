@@ -30,6 +30,19 @@ class Layer:
 
         self.activator = activator
 
+        '''
+         -- represent weights per node -->
+        [[0.0 0.0]  |
+         [0.0 0.0]] V represent nodes per layer
+        '''
+
+        self.nodes: list[Node] = [Node(
+            input_count,
+            self.weights[i],
+            self.biases[i],
+            activator
+        ) for i in range(node_count)]
+
     def __str__(self) -> str:
         return f"""
 i: {self.input_count},
@@ -38,7 +51,9 @@ w:
 {self.weights},
 b:
 {self.biases},
-a: {self.activator.__name__}
+a: {self.activator.__name__},
+nodes:
+{self.nodes}
 """
 
     def __repr__(self) -> str:
@@ -46,21 +61,26 @@ a: {self.activator.__name__}
     
     def generate_random_weights(self, min=-1, max=1) -> None:
         self.weights = np.random.uniform(min, max, (self.node_count, self.input_count))
+        for i, node in enumerate(self.nodes):
+            node.weights = self.weights[i]
 
     def generate_random_biases(self, min=-1, max=1) -> None:
         self.biases = np.random.uniform(min, max, self.node_count)
+        for i, node in enumerate(self.nodes):
+            node.bias = self.biases[i]
 
     def generate_zeroed_weights(self) -> None:
         self.weights = np.zeros((self.node_count, self.input_count))
+        for i, node in enumerate(self.nodes):
+            node.weights = self.weights[i]
 
     def generate_zeroed_biases(self) -> None:
         self.biases = np.zeros(self.node_count)
+        for i, node in enumerate(self.nodes):
+            node.bias = self.biases[i]
 
     def calc(self, inputs: list[float]):
-        return [
-            self.activator(np.dot(self.weights[i], inputs) + self.biases[i])
-            for i in range(self.node_count)
-        ]
+        return [node.calc(inputs) for node in self.nodes]
 
 
 if __name__ == "__main__":

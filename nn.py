@@ -30,7 +30,7 @@ class NeuralNet:
         ]
         '''
 
-        self.layers = [Layer(
+        self.layers: list[Layer] = [Layer(
             input_count if i == 0 else layer_sizes[i - 1],
             layer_sizes[i],
             weights[i] if weights is not None else None, 
