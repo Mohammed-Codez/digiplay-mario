@@ -1,8 +1,10 @@
 from cynes.windowed import WindowedNES
 from cynes import *
 from time import sleep
-import keyboard
-import pyautogui
+
+from nn import *
+from activator import *
+from PIL import Image, ImageDraw
 
 # the below dict is a whatnot. not used. not done. idrk
 keys = {
@@ -18,8 +20,34 @@ keys = {
 
 # We initialize a new emulator by specifying the ROM file used
 with WindowedNES("nes_rom.nes") as nes:
+    step: int = 0
     # While the emulator should not be closed, we can continue the emulation
     while not nes.should_close:
         # It also returns the content of the frame buffer as a numpy array
         frame = nes.step()
-        sleep(1 / 100)
+
+        if step == 30:
+            nes.controller = NES_INPUT_START
+            nes.step()
+
+        if step >= 40:
+            img: Image.Image = Image.fromarray(frame)
+            """
+            the below code was for generating transition-frame.png
+            
+            if step == 40:
+                draw: ImageDraw.ImageDraw = ImageDraw.Draw(img)
+
+                draw.rectangle([
+                    24, 24, 232, 32
+                ], '#000000')
+
+                draw.rectangle([
+                    136, 80, 160, 120
+                ], '#000000')
+
+                img.save('transition-frame.png')
+            """
+
+        step += 1
+        sleep(1 / 60)
