@@ -31,19 +31,20 @@ with WindowedNES("nes_rom.nes") as nes:
             nes.step()
 
         if step >= 40:
-            img: Image.Image = Image.fromarray(frame)
+            img: Image.Image = Image.fromarray(frame).resize((128, 120))
+
             """
-            the below code was for generating transition-frame.png
+            the below code is for generating transition-frame.png
             
             if step == 40:
                 draw: ImageDraw.ImageDraw = ImageDraw.Draw(img)
 
                 draw.rectangle([
-                    24, 24, 232, 32
+                    12, 12, 116, 16
                 ], '#000000')
 
                 draw.rectangle([
-                    136, 80, 160, 120
+                    68, 40, 80, 60
                 ], '#000000')
 
                 img.save('transition-frame.png')
