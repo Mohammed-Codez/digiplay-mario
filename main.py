@@ -28,10 +28,9 @@ with WindowedNES("nes_rom.nes") as nes:
 
         if step == 30:
             nes.controller = NES_INPUT_START
-            nes.step()
 
         if step >= 40:
-            img: Image.Image = Image.fromarray(frame).resize((128, 120))
+            img: Image.Image = Image.fromarray(frame).resize((128, 120)).convert('L')
 
             """
             the below code is for generating transition-frame.png
