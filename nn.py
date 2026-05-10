@@ -53,7 +53,7 @@ l:
 {pp.pformat(self.layers, depth=4)}
 """
     
-    def geneate_random_weights(self, min=-1, max=1) -> None:
+    def generate_random_weights(self, min=-1, max=1) -> None:
         for layer in self.layers:
             layer.generate_random_weights(min, max)
     
@@ -77,7 +77,7 @@ l:
 if __name__ == "__main__":
     nn = NeuralNet(4, [3, 2])
     print('NN Data: \n', nn)
-    nn.geneate_random_weights()
+    nn.generate_random_weights()
     print('NN Data after generating random weights: \n', nn)
     nn.generate_random_biases()
     print('NN Data after generating random biases: \n', nn)
