@@ -12,7 +12,8 @@ class NeuralNet:
             input_count: int,
             layer_sizes: list[int],
             weights: list[list[list[float]]] | None = None,
-            biases: list[list[float]] | None = None
+            biases: list[list[float]] | None = None,
+            id: int = 0
         ) -> None:
         self.input_count: int = input_count
         self.layer_sizes: np.ndarray = np.array(layer_sizes)
@@ -36,6 +37,22 @@ class NeuralNet:
             weights[i] if weights is not None else None, 
             biases[i] if biases is not None else None
         ) for i in range(len(layer_sizes))]
+
+        self._score: float = 0
+        self.id: int = id
+
+    @property
+    def score(self) -> float:
+        return self._score
+    
+    @score.setter
+    def score(self, value: float) -> None:
+        print(
+            f'Score {
+                'in'if abs(value) == value else 'de'
+            }creased by {abs(self._score - value)}. Current Score: {value}'
+        )
+        self._score = value
 
     def __str__(self) -> str:
         return f"""
@@ -71,7 +88,7 @@ l:
 
     def calc(self, inputs: list[float]) -> list[float]:
         for layer in self.layers:
-            inputs = layer.calc(inputs)
+            inputs = layer.calc(inputs, self.id)
         return inputs
 
 if __name__ == "__main__":

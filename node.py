@@ -52,7 +52,8 @@ a: {self.activator.__name__}
     def generate_zeroed_bias(self) -> None:
         self.bias = 0.0
 
-    def calc(self, inputs: list[float]) -> float:
+    def calc(self, inputs: list[float], thing = 0) -> float:
+        # print(f'Output {thing}: {self.activator(np.dot(inputs, self.weights) + self.bias)}')
         return self.activator(np.dot(inputs, self.weights) + self.bias)
 
 if __name__ == "__main__":

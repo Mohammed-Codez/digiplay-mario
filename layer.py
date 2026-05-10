@@ -44,11 +44,11 @@ class Layer:
         ) for i in range(node_count)]
 
     @property
-    def activator(self):
+    def activator(self) -> Callable[[float], float]:
         return self._activator
 
     @activator.setter
-    def activator(self, value: Callable[[float], float]):
+    def activator(self, value: Callable[[float], float]) -> None:
         self._activator = value
 
         for node in self.nodes:
@@ -90,8 +90,8 @@ nodes:
         for i, node in enumerate(self.nodes):
             node.bias = self.biases[i]
 
-    def calc(self, inputs: list[float]):
-        return [node.calc(inputs) for node in self.nodes]
+    def calc(self, inputs: list[float], thing = 0):
+        return [node.calc(inputs, thing) for node in self.nodes]
 
 
 if __name__ == "__main__":
@@ -102,3 +102,5 @@ if __name__ == "__main__":
     layer.generate_random_biases()
     print(f'Layer Data after generating random biases: \n{layer}')
     print(f'Layer Output: \n{layer.calc([1.0, 0.5])}')
+    layer.activator = heaviside
+    print(f'Layer Output after converting to Heaveside: \n{layer.calc([1.0, 0.5])}')
