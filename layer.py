@@ -28,7 +28,7 @@ class Layer:
             else np.zeros(self.node_count)
         )
 
-        self.activator = activator
+        self._activator: Callable[[float], float] = activator
 
         '''
          -- represent weights per node -->
@@ -42,6 +42,17 @@ class Layer:
             self.biases[i],
             activator
         ) for i in range(node_count)]
+
+    @property
+    def activator(self):
+        return self._activator
+
+    @activator.setter
+    def activator(self, value: Callable[[float], float]):
+        self._activator = value
+
+        for node in self.nodes:
+            node.activator = value
 
     def __str__(self) -> str:
         return f"""
