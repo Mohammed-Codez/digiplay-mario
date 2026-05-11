@@ -8,6 +8,7 @@ from threading import Thread
 from time import perf_counter
 
 import numpy as np
+import os, shutil
 from node import *
 from nn import *
 from activator import *
@@ -253,6 +254,56 @@ class App(tk.Frame):
                 evo_thread = Thread(target=self.evolve)
                 evo_thread.start()
 
+        def save_nns(self) -> None:
+                if not os.path.exists('saved_nns'):
+                        os.makedirs('saved_nns')
+
+                for file in os.listdir('saved_nns'):
+                        file_path = os.path.join('saved_nns', file)
+                        try:
+                                if os.path.isfile(file_path) or os.path.islink(file_path):
+                                        os.remove(file_path)
+                                elif os.path.isdir(file_path):
+                                        shutil.rmtree(file_path)
+                        except Exception as e:
+                                print(f'Failed to delete {file_path}. Reason: {e}')
+
+                for neural_net in self.neural_nets:
+                        np.savez(
+                                f'saved_nns/nn_{neural_net.id}.npz', 
+                                layer_sizes=neural_net.layer_sizes,
+                                weights=[layer.weights for layer in neural_net.layers],
+                                biases=[layer.biases for layer in neural_net.layers]
+                        )
+
+        def load_nns(self) -> None:
+                for child in self.nn_list.winfo_children():
+                        child.destroy()
+
+                self.neural_nets = []
+
+                for file in os.listdir('saved_nns'):
+                        if file.endswith('.npz'):
+                                data = np.load(f'saved_nns/{file}', allow_pickle=True)
+                                nn = NeuralNet(
+                                        128 * 120,
+                                        data['layer_sizes'].tolist(),
+                                        weights=data['weights'].tolist(),
+                                        biases=data['biases'].tolist(),
+                                        id=int(file.split('_')[1].split('.')[0])
+                                )
+
+                                self.neural_nets.append(nn)
+
+                                frame_child = tk.Button(
+                                        self.nn_list,
+                                        text=self.neural_nets.index(nn)
+                                )
+
+                                frame_child.pack()
+
+
+
         def create_widgets(self) -> None:
                 self.nn_list = tk.Scrollbar(
                         self,
@@ -362,9 +413,21 @@ class App(tk.Frame):
 
                 # ================
 
+                self.button_save_nns = tk.Button(
+                        self, text='Save Neural Nets',
+                        command=self.save_nns
+                ).grid(row=5, column=0, columnspan=2)
+
+                self.button_load_nns = tk.Button(
+                        self, text='Load Neural Nets',
+                        command=self.load_nns
+                ).grid(row=5, column=2, columnspan=2)
+
+                # ================
+
                 self.info_generation = tk.Label(
                         self, text=f'Generation: {self.generations}'
-                ).grid(row=5, column=0)
+                ).grid(row=6, column=0)
                 
 
 root = tk.Tk()
