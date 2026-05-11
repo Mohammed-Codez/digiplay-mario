@@ -1,6 +1,13 @@
 import tkinter as tk
 from tkinter import messagebox
 
+from cynes.windowed import WindowedNES
+from cynes import *
+
+from threading import Thread
+from time import perf_counter
+
+from node import *
 from nn import *
 from activator import *
 from PIL import Image, ImageDraw, ImageChops
@@ -45,7 +52,7 @@ class App(tk.Frame):
                         self.generated = messagebox.showinfo(
                                 'Done!',
                                 f'Generated {self.max_nns.get()} Neural Net{
-                                        '' if self.max_nns.get() == 0 else 's'
+                                        '' if self.max_nns.get() == 1 else 's'
                                 }'
                         )
 
@@ -63,6 +70,88 @@ class App(tk.Frame):
                                         child.destroy()
 
                                 generate()
+
+        def evolve(self) -> None:
+                movement_input = [
+                        NES_INPUT_A,
+                        NES_INPUT_B,
+                        NES_INPUT_UP,
+                        NES_INPUT_DOWN,
+                        NES_INPUT_LEFT,
+                        NES_INPUT_RIGHT
+                ]
+
+                evolution_start_time: float = perf_counter()
+
+                for neural_net in self.neural_nets:
+                        nes = NES('nes_rom.nes')
+                        step: int = 0
+
+                        lives: int = nes[0x75a]
+                        prev_lives: int = lives
+
+                        timer: int = nes[0x07f8] * 100 + nes[0x07f9] * 10 + nes[0x07fa]
+                        prev_timer: int = timer
+
+                        score: int = sum(nes[2013 + i] * 100 ** (5 - i) for i in range(6))
+                        prev_score: int = score
+
+                        print(f'Evaluating Neural Network {self.neural_nets.index(neural_net)} of ID {neural_net.id}')
+                        nn_start_time: float = perf_counter()
+
+                        while not nes.has_crashed or nes[0x0770] != 0x3: # if game over
+                                frame = nes.step()
+
+                                lives = nes[0x75a]
+                                timer = nes[0x07f8] * 100 + nes[0x07f9] * 10 + nes[0x07fa]
+                                score = sum(nes[2013 + i] * 100 ** (5 - i) for i in range(6))
+
+                                if step == 30: nes.controller = NES_INPUT_START
+
+                                if step >= 40:
+                                        img = Image.fromarray(frame).resize((128, 120)).convert('L')
+                                        nn_input = np.asarray(img).ravel().tolist()
+
+                                        calced_movements = neural_net.calc(nn_input)
+
+                                        for i in range(6):
+                                                nes.controller |= bool(calced_movements[i]) and bool(movement_input[i])
+
+                                        # scoring
+                                        if nes[0x0490] == 0xfe: # if player is colliding
+                                                neural_net.score -= 5 / 30
+
+                                        if timer < prev_timer:
+                                                neural_net.score -= 0.1
+                                        prev_timer = timer
+
+                                        if lives < prev_lives:
+                                                neural_net.score -= 5 + 0.1 * (400 - timer)
+                                        prev_lives = lives
+
+                                        # positive
+                                        if score > prev_score:
+                                                neural_net.score += (score - prev_score) / 10
+
+                                        prev_score = score
+
+                                step += 1
+
+                                if nes.has_crashed or nes[0x0770] == 0x3: break
+
+                        nn_end_time: float = perf_counter()
+
+                        print(f'Time elapsed for {self.neural_nets.index(neural_net)}: {
+                                nn_end_time - nn_start_time
+                        } seconds')
+
+                evolution_end_time: float = perf_counter()
+
+                print(f'Total elapsed time: {evolution_end_time - evolution_start_time}')
+
+        def evolve_thread(self) -> None:
+                evo_thread = Thread(target=self.evolve)
+                evo_thread.start()
 
         def create_widgets(self) -> None:
                 self.nn_list = tk.Scrollbar(
@@ -108,7 +197,8 @@ class App(tk.Frame):
                 ).grid(row=2, column=1)
 
                 self.button_do_epoch = tk.Button(
-                        self, text='Run'
+                        self, text='Run',
+                        command=self.evolve_thread
                 ).grid(row=2, column=2)
 
                 self.button_stop_epoch = tk.Button(

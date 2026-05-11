@@ -22,14 +22,12 @@ keys = {
 }
 
 movement_list: list = [
+    NES_INPUT_A,
+    NES_INPUT_B,
     NES_INPUT_UP,
     NES_INPUT_DOWN,
     NES_INPUT_LEFT,
-    NES_INPUT_RIGHT,
-    NES_INPUT_A,
-    NES_INPUT_B,
-    NES_INPUT_START,
-    NES_INPUT_SELECT
+    NES_INPUT_RIGHT
 ]
 
 neural_nets: list[NeuralNet] = []
@@ -83,7 +81,7 @@ for i in range(1):
                 img: Image.Image = Image.fromarray(frame).resize((128, 120)).convert('L')
                 nn_image: list[float] = np.asarray(img).ravel().tolist()
 
-                calced_movements = np.append(neural_net.calc(nn_image), [np.float64(0.0), np.float64(0.0)])
+                calced_movements = neural_net.calc(nn_image)
 
                 """
                 # the code below might be used later
