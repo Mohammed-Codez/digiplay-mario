@@ -31,7 +31,7 @@ class NeuralNet:
         ]
         '''
 
-        self.layers: list[Layer] = [Layer(
+        self._layers: list[Layer] = [Layer(
             input_count if i == 0 else layer_sizes[i - 1],
             layer_sizes[i],
             weights[i] if weights is not None else None, 
@@ -42,16 +42,26 @@ class NeuralNet:
         self.id: int = id
 
     @property
+    def layers(self) -> list[Layer]:
+        return self._layers
+    
+    @layers.setter
+    def layers(self, value: list[Layer]) -> None:
+        self._layers = value
+
+        self.layer_sizes = np.array([layer.node_count for layer in value])
+
+    @property
     def score(self) -> float:
         return self._score
     
     @score.setter
     def score(self, value: float) -> None:
-        print(
-            f'Score {
-                'in'if abs(value) == value else 'de'
-            }creased by {abs(self._score - value)}. Current Score: {value}'
-        )
+        # print(
+        #     f'Score of {self.id} {
+        #         'in'if abs(value) == value else 'de'
+        #     }creased by {abs(self._score - value)}. Current Score: {value}'
+        # )
         self._score = value
 
     def __str__(self) -> str:

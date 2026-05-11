@@ -3,6 +3,8 @@ from node import Node
 from activator import *
 from typing import Callable
 
+import node
+
 
 class Layer:
     def __init__(
@@ -36,12 +38,26 @@ class Layer:
          [0.0 0.0]] V represent nodes per layer
         '''
 
-        self.nodes: list[Node] = [Node(
+        self._nodes: list[Node] = [Node(
             input_count,
             self.weights[i],
             self.biases[i],
             activator
         ) for i in range(node_count)]
+
+    @property
+    def nodes(self) -> list[Node]:
+        return self._nodes
+    
+
+    @nodes.setter
+    def nodes(self, value: list[Node]) -> None:
+        self._nodes = value
+
+        self.node_count = len(value)
+        self.weights = np.array([node.weights for node in value])
+        self.biases = np.array([node.bias for node in value])
+
 
     @property
     def activator(self) -> Callable[[float], float]:

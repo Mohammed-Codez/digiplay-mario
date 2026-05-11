@@ -7,6 +7,7 @@ from cynes import *
 from threading import Thread
 from time import perf_counter
 
+import numpy as np
 from node import *
 from nn import *
 from activator import *
@@ -20,6 +21,14 @@ class App(tk.Frame):
 
                 # variables
                 self.max_nns: tk.IntVar = tk.IntVar()
+                self.epochs: tk.IntVar = tk.IntVar()
+                self.generations: int = 0
+
+                self.weight_mutation_rate: tk.DoubleVar = tk.DoubleVar(value = 10)
+                self.bias_mutation_rate: tk.DoubleVar = tk.DoubleVar(value = 10)
+
+                self.weight_mutation_scale: tk.DoubleVar = tk.DoubleVar(value = 1)
+                self.bias_mutation_scale: tk.DoubleVar = tk.DoubleVar(value = 1)
 
                 self.neural_nets: list[NeuralNet] = []
 
@@ -28,36 +37,37 @@ class App(tk.Frame):
         def is_num(self, n: int | float) -> bool:
                 return True if (not n) or n.is_integer() else False
         
-        def generate_nns(self) -> None:
-                def generate() -> None:
-                        for neural_net in range(self.max_nns.get()):
-                                nn: NeuralNet = NeuralNet(
-                                        128 * 120,
-                                        [6],
-                                        id = neural_net
-                                )
-
-                                nn.generate_random_weights()
-                                nn.generate_random_biases(0)
-
-                                self.neural_nets.append(nn)
-
-                                frame_child = tk.Button(
-                                        self.nn_list,
-                                        text=neural_net
-                                )
-
-                                frame_child.pack()
-
-                        self.generated = messagebox.showinfo(
-                                'Done!',
-                                f'Generated {self.max_nns.get()} Neural Net{
-                                        '' if self.max_nns.get() == 1 else 's'
-                                }'
+        def setup_nns(self) -> None:
+                self.neural_nets = []
+                
+                for neural_net in range(self.max_nns.get()):
+                        nn: NeuralNet = NeuralNet(
+                                128 * 120,
+                                [6],
+                                id = neural_net
                         )
 
+                        nn.generate_random_weights()
+                        nn.generate_random_biases(0)
+
+                        self.neural_nets.append(nn)
+
+                        frame_child = tk.Button(
+                                self.nn_list,
+                                text=neural_net
+                        )
+
+                        frame_child.pack()
+
+        def update_nns(self) -> None:
+                for child in self.nn_list.winfo_children():
+                        child.destroy()
+
+                self.setup_nns()
+        
+        def generate_nns(self) -> None:
                 if not self.neural_nets:
-                        generate()
+                        self.setup_nns()
                 else:
                         self.overwrite = messagebox.askyesno(
                                 'Overwriting!',
@@ -66,12 +76,9 @@ class App(tk.Frame):
                         )
 
                         if self.overwrite:
-                                for child in self.nn_list.winfo_children():
-                                        child.destroy()
+                                self.update_nns()
 
-                                generate()
-
-        def evolve(self) -> None:
+        def evaluate(self, neural_net: NeuralNet) -> None:
                 movement_input = [
                         NES_INPUT_A,
                         NES_INPUT_B,
@@ -81,73 +88,156 @@ class App(tk.Frame):
                         NES_INPUT_RIGHT
                 ]
 
-                evolution_start_time: float = perf_counter()
+                evaluation_start_time: float = perf_counter()
+
+                # for neural_net in self.neural_nets:
+                nes = NES('nes_rom.nes')
+                step: int = 0
+
+                lives: int = nes[0x75a]
+                prev_lives: int = lives
+
+                timer: int = nes[0x07f8] * 100 + nes[0x07f9] * 10 + nes[0x07fa]
+                prev_timer: int = timer
+
+                score: int = sum(nes[2013 + i] * 100 ** (5 - i) for i in range(6))
+                prev_score: int = score
+
+                neural_net.score = 0
+
+                print(f'Evaluating Neural Network {self.neural_nets.index(neural_net) + 1} of ID {neural_net.id}...')
+                nn_start_time: float = perf_counter()
+
+                while not nes.has_crashed or nes[0x0770] != 0x3: # if game over
+                        frame = nes.step()
+
+                        lives = nes[0x75a]
+                        timer = nes[0x07f8] * 100 + nes[0x07f9] * 10 + nes[0x07fa]
+                        score = sum(nes[2013 + i] * 100 ** (5 - i) for i in range(6))
+
+                        if step == 30: nes.controller = NES_INPUT_START
+
+                        if step >= 40:
+                                img = Image.fromarray(frame).resize((128, 120)).convert('L')
+                                nn_input = np.asarray(img).ravel().tolist()
+
+                                calced_movements = neural_net.calc(nn_input)
+
+                                for i in range(6):
+                                        nes.controller |= bool(calced_movements[i]) and bool(movement_input[i])
+
+                                # scoring
+                                if nes[0x0490] == 0xfe: # if player is colliding
+                                        neural_net.score -= 5 / 30
+
+                                if timer < prev_timer:
+                                        neural_net.score -= 0.1
+                                prev_timer = timer
+
+                                if lives < prev_lives:
+                                        neural_net.score -= 5 + 0.1 * (400 - timer)
+                                prev_lives = lives
+
+                                # positive
+                                if score > prev_score:
+                                        neural_net.score += (score - prev_score) / 10
+
+                                prev_score = score
+
+                        step += 1
+
+                        if nes.has_crashed or nes[0x0770] == 0x3: break
+
+                nn_end_time: float = perf_counter()
+                print(f'Time elapsed for {self.neural_nets.index(neural_net)}: {nn_end_time - nn_start_time} seconds')
+
+                evaluation_end_time: float = perf_counter()
+                # print(f'Total elapsed time: {evaluation_end_time - evaluation_start_time}')
+
+        def evaluate_thread(self) -> None:
+                eval_threads: list[Thread] = []
 
                 for neural_net in self.neural_nets:
-                        nes = NES('nes_rom.nes')
-                        step: int = 0
+                        eval_thread = Thread(target=self.evaluate, args=(neural_net,))
+                        eval_thread.start()
+                        eval_threads.append(eval_thread)
 
-                        lives: int = nes[0x75a]
-                        prev_lives: int = lives
+                for eval_thread in eval_threads:
+                        eval_thread.join()
 
-                        timer: int = nes[0x07f8] * 100 + nes[0x07f9] * 10 + nes[0x07fa]
-                        prev_timer: int = timer
+        def kill_and_reproduce(self) -> None:
+                new_nns: list[NeuralNet] = self.neural_nets.copy()
 
-                        score: int = sum(nes[2013 + i] * 100 ** (5 - i) for i in range(6))
-                        prev_score: int = score
+                new_nns.sort(key=lambda nn: nn.score, reverse=True)
 
-                        print(f'Evaluating Neural Network {self.neural_nets.index(neural_net)} of ID {neural_net.id}')
-                        nn_start_time: float = perf_counter()
+                while len(new_nns) > np.ceil(self.max_nns.get() / 2):
+                        new_nns.pop()
+                
+                halved_nns: list[NeuralNet] = new_nns.copy()
+                # print(len(halved_nns))
 
-                        while not nes.has_crashed or nes[0x0770] != 0x3: # if game over
-                                frame = nes.step()
+                reproduction_start_time: float = perf_counter()
 
-                                lives = nes[0x75a]
-                                timer = nes[0x07f8] * 100 + nes[0x07f9] * 10 + nes[0x07fa]
-                                score = sum(nes[2013 + i] * 100 ** (5 - i) for i in range(6))
+                for neural_net in halved_nns:
+                        if len(new_nns) < self.max_nns.get():
+                                for layer in neural_net.layers:
+                                        for node in layer.nodes:
+                                                if np.random.uniform(0, 1) < (self.weight_mutation_rate.get() / 100):
+                                                        node.weights += np.random.normal(scale=self.weight_mutation_scale.get(), size=node.weights.size)
+                                                        print(f'Modified node weights in Layer {neural_net.layers.index(layer)} of NN {self.neural_nets.index(neural_net)}')
 
-                                if step == 30: nes.controller = NES_INPUT_START
+                                                if np.random.uniform(0, 1) < (self.bias_mutation_rate.get() / 100):
+                                                        node.bias += np.random.normal(scale=self.bias_mutation_scale.get())
+                                                        print(f'Modified node bias in Layer {neural_net.layers.index(layer)} of NN {self.neural_nets.index(neural_net)}')
 
-                                if step >= 40:
-                                        img = Image.fromarray(frame).resize((128, 120)).convert('L')
-                                        nn_input = np.asarray(img).ravel().tolist()
+                                        if np.random.uniform(0, 1) < 0.02:
+                                                layer.nodes.append(Node(
+                                                        layer.input_count + 1,
+                                                        np.random.rand(layer.input_count + 1).tolist(),
+                                                        np.random.uniform(-1, 1),
+                                                        layer.activator
+                                                ))
 
-                                        calced_movements = neural_net.calc(nn_input)
+                                                print(f'Added node in Layer {neural_net.layers.index(layer)} of NN {self.neural_nets.index(neural_net)}')
 
-                                        for i in range(6):
-                                                nes.controller |= bool(calced_movements[i]) and bool(movement_input[i])
+                                if np.random.uniform(0, 1) < 0.02:
+                                        new_layer_pos: int = np.random.randint(0, len(neural_net.layers) - 1)
+                                        new_layer_inp_size: int = 128*120 if new_layer_pos == 0 else neural_net.layer_sizes[new_layer_pos - 1]
 
-                                        # scoring
-                                        if nes[0x0490] == 0xfe: # if player is colliding
-                                                neural_net.score -= 5 / 30
+                                        neural_net.layers.insert(new_layer_pos, Layer(
+                                                new_layer_inp_size,
+                                                1,
+                                                np.random.rand(1, new_layer_inp_size).tolist(),
+                                                np.random.rand(new_layer_inp_size).tolist(),
+                                                silu
+                                        ))
 
-                                        if timer < prev_timer:
-                                                neural_net.score -= 0.1
-                                        prev_timer = timer
+                                        print(f'Added new layer at {new_layer_pos} in NN {self.neural_nets.index(neural_net)}')
 
-                                        if lives < prev_lives:
-                                                neural_net.score -= 5 + 0.1 * (400 - timer)
-                                        prev_lives = lives
+                        new_nns.append(neural_net)
 
-                                        # positive
-                                        if score > prev_score:
-                                                neural_net.score += (score - prev_score) / 10
+                self.neural_nets = new_nns.copy()
+                
+                reproduction_end_time: float = perf_counter()
+                print(f'Time elapsed for reproduction: {reproduction_end_time - reproduction_start_time} seconds')
 
-                                        prev_score = score
+                self.update_nns()
 
-                                step += 1
+        def evolve(self) -> None:
+                for epoch in range(self.epochs.get()):
+                        self.generations += 1
+                        print(f'Generation {self.generations}:')
+                        tk.Label(
+                                self, text=f'Generation: {self.generations}'
+                        ).grid(row=5, column=0)
+                        print('Evaluating...')
+                        self.evaluate_thread()
+                        print('Evaluation complete!')
+                        print('Evolving...')
+                        self.kill_and_reproduce()
+                        print('Evolution complete!')
 
-                                if nes.has_crashed or nes[0x0770] == 0x3: break
-
-                        nn_end_time: float = perf_counter()
-
-                        print(f'Time elapsed for {self.neural_nets.index(neural_net)}: {
-                                nn_end_time - nn_start_time
-                        } seconds')
-
-                evolution_end_time: float = perf_counter()
-
-                print(f'Total elapsed time: {evolution_end_time - evolution_start_time}')
+                print('Done evolving!')
 
         def evolve_thread(self) -> None:
                 evo_thread = Thread(target=self.evolve)
@@ -176,6 +266,8 @@ class App(tk.Frame):
                         columnspan=2
                 )
 
+                # ================
+
                 self.button_gen_nns = tk.Button(
                         self, text='Generate Neural Nets',
                         command=self.generate_nns
@@ -186,15 +278,20 @@ class App(tk.Frame):
                         from_=1, to=25
                 )
 
+                # ================
+
                 self.entry_gen_nns.grid(row=1, column=1)
 
                 self.label_do_epoch = tk.Label(
                         self, text='Do Epoch(s): '
                 ).grid(row=2, column=0)
 
-                self.entry_do_epoch = tk.Entry(
-                        self, validatecommand=(self.root.register(self.is_num), '%P')
-                ).grid(row=2, column=1)
+                self.entry_do_epoch = tk.Spinbox(
+                        self, textvariable=self.epochs,
+                        from_=1, to=10
+                )
+                
+                self.entry_do_epoch.grid(row=2, column=1)
 
                 self.button_do_epoch = tk.Button(
                         self, text='Run',
@@ -204,6 +301,60 @@ class App(tk.Frame):
                 self.button_stop_epoch = tk.Button(
                         self, text='Stop'
                 ).grid(row=2, column=3)
+
+                # ================
+
+                self.button_weight_mutation_rate = tk.Label(
+                        self, text='Weight Mutation Rate',
+                ).grid(row=3, column=0)
+
+                self.entry_weight_mutation_rate = tk.Spinbox(
+                        self, textvariable=self.weight_mutation_rate,
+                        from_=1, to=100
+                )
+
+                self.entry_weight_mutation_rate.grid(row=3, column=1)
+
+                self.button_bias_mutation_rate = tk.Label(
+                        self, text='Bias Mutation Rate',
+                ).grid(row=3, column=2)
+
+                self.entry_bias_mutation_rate = tk.Spinbox(
+                        self, textvariable=self.bias_mutation_rate,
+                        from_=1, to=100
+                )
+
+                self.entry_bias_mutation_rate.grid(row=3, column=3)
+
+                # ================
+
+                self.button_weight_mutation_scale = tk.Label(
+                        self, text='Weight Mutation Scale',
+                ).grid(row=4, column=0)
+
+                self.entry_weight_mutation_scale = tk.Spinbox(
+                        self, textvariable=self.weight_mutation_scale,
+                        from_=1, to=10
+                )
+
+                self.entry_weight_mutation_scale.grid(row=4, column=1)
+
+                self.button_bias_mutation_scale = tk.Label(
+                        self, text='Bias Mutation Scale',
+                ).grid(row=4, column=2)
+
+                self.entry_bias_mutation_scale = tk.Spinbox(
+                        self, textvariable=self.bias_mutation_scale,
+                        from_=1, to=10
+                )
+
+                self.entry_bias_mutation_scale.grid(row=4, column=3)
+
+                # ================
+
+                self.info_generation = tk.Label(
+                        self, text=f'Generation: {self.generations}'
+                ).grid(row=5, column=0)
                 
 
 root = tk.Tk()
