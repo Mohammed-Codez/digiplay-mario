@@ -129,22 +129,32 @@ class App(tk.Frame):
                                 # scoring
                                 if nes[0x0490] == 0xfe: # if player is colliding
                                         neural_net.score -= 5 / 30
+                                        print(f'Neural Net {self.neural_nets.index(neural_net)} hit wall. Score: {neural_net.score}')
 
                                 if timer < prev_timer:
                                         neural_net.score -= 0.1
+                                        print(f'Neural Net {self.neural_nets.index(neural_net)} wasted time to {timer}. Score: {neural_net.score}')
+
                                 prev_timer = timer
 
                                 if lives < prev_lives:
                                         neural_net.score -= 5 + 0.1 * (400 - timer)
+                                        print(f'Neural Net {self.neural_nets.index(neural_net)} lost life to {lives + 1}. Score: {neural_net.score}')
+
                                 prev_lives = lives
 
                                 # positive
                                 if score > prev_score:
                                         neural_net.score += (score - prev_score) / 10
+                                        print(f'Neural Net {self.neural_nets.index(neural_net)} gained points by {score - prev_score} to {score}. Score: {neural_net.score}')
 
                                 prev_score = score
 
                         step += 1
+
+                        if nes[0x0770] == 0x3:
+                                neural_net.score -= 20
+                                print(f'Neural Net {self.neural_nets.index(neural_net)} ended game. Score: {neural_net.score}')
 
                         if nes.has_crashed or nes[0x0770] == 0x3: break
 
