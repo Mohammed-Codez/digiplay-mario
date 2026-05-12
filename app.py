@@ -300,14 +300,16 @@ class App(tk.Frame):
                                         id=int(file.split('_')[1].split('.')[0])
                                 )
 
-                                self.neural_nets.append(nn)
-
                                 frame_child = ttk.Button(
                                         self.nn_list,
-                                        text=self.neural_nets.index(nn)
+                                        text=neural_net,
                                 )
 
-                                frame_child.pack()
+                                self.nn_list.rowconfigure(neural_net // 10, weight=1)
+                                self.nn_list.columnconfigure(neural_net % 10, weight=1)
+                                self.nn_list.grid_propagate(0)
+
+                                frame_child.grid(row=neural_net // 10, column=neural_net % 10, sticky='wens')
 
 
 
