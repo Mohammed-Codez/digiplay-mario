@@ -7,15 +7,17 @@ from cynes import *
 from threading import Thread
 from time import perf_counter
 
-import numpy as np
 import os, shutil
+import platform
+
+import numpy as np
 from node import *
 from nn import *
 from activator import *
 from PIL import Image, ImageDraw, ImageChops
 
 class App(tk.Frame):
-        def __init__(self, root = None) -> None:
+        def __init__(self, root: tk.Tk | None = None) -> None:
                 super().__init__(root)
                 self.root = root
                 self.pack()
@@ -305,6 +307,26 @@ class App(tk.Frame):
 
 
         def create_widgets(self) -> None:
+                self.menu = tk.Menu(self)
+        
+                self.menu_file = tk.Menu(self.menu, tearoff=0)
+                
+                self.menu_file.add_command(
+                        label='Save Neural Nets',
+                        command=self.save_nns,
+                        accelerator='Cmd-S' if platform.system() == 'Darwin' else 'Ctrl-S',
+                )
+
+                self.menu_file.add_command(
+                        label='Load Neural Nets',
+                        command=self.load_nns,
+                        accelerator='Cmd-O' if platform.system() == 'Darwin' else 'Ctrl-O',
+                )
+
+                self.menu.add_cascade(label='File', menu=self.menu_file)
+
+                # ================
+
                 self.nn_list = tk.Scrollbar(
                         self,
                         width=(root.winfo_width()),
@@ -428,7 +450,12 @@ class App(tk.Frame):
                 self.info_generation = tk.Label(
                         self, text=f'Generation: {self.generations}'
                 ).grid(row=6, column=0)
-                
+
+                # ================
+
+                self.root.config(menu=self.menu)
+                self.root.bind_all('<Command-s>' if platform.system() == 'Darwin' else '<Control-s>', lambda event: self.save_nns())
+                self.root.bind_all('<Command-o>' if platform.system() == 'Darwin' else '<Control-o>', lambda event: self.load_nns())
 
 root = tk.Tk()
 root.title('DigiPlay Control Panel')
