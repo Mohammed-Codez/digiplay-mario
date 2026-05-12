@@ -219,7 +219,7 @@ class App(tk.Frame):
                                                 print(f'Added node in Layer {neural_net.layers.index(layer)} of NN {self.neural_nets.index(neural_net)}')
 
                                 if np.random.uniform(0, 1) < 0.02:
-                                        new_layer_pos: int = np.random.randint(0, len(neural_net.layers) - 1)
+                                        new_layer_pos: int = np.random.randint(0, len(neural_net.layers) - 1) if len(neural_net.layers) - 1 > 0 else 0
                                         new_layer_inp_size: int = 128*120 if new_layer_pos == 0 else neural_net.layer_sizes[new_layer_pos - 1]
 
                                         neural_net.layers.insert(new_layer_pos, Layer(
