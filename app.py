@@ -302,14 +302,14 @@ class App(tk.Frame):
 
                                 frame_child = ttk.Button(
                                         self.nn_list,
-                                        text=neural_net,
+                                        text=nn.id,
                                 )
 
-                                self.nn_list.rowconfigure(neural_net // 10, weight=1)
-                                self.nn_list.columnconfigure(neural_net % 10, weight=1)
+                                self.nn_list.rowconfigure(nn.id // 10, weight=1)
+                                self.nn_list.columnconfigure(nn.id % 10, weight=1)
                                 self.nn_list.grid_propagate(0)
 
-                                frame_child.grid(row=neural_net // 10, column=neural_net % 10, sticky='wens')
+                                frame_child.grid(row=nn.id // 10, column=nn.id % 10, sticky='wens')
 
 
 
