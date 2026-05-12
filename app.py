@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox
 
 from cynes.windowed import WindowedNES
@@ -55,12 +56,16 @@ class App(tk.Frame):
 
                         self.neural_nets.append(nn)
 
-                        frame_child = tk.Button(
+                        frame_child = ttk.Button(
                                 self.nn_list,
-                                text=neural_net
+                                text=neural_net,
                         )
 
-                        frame_child.pack()
+                        self.nn_list.rowconfigure(neural_net // 10, weight=1)
+                        self.nn_list.columnconfigure(neural_net % 10, weight=1)
+                        self.nn_list.grid_propagate(0)
+
+                        frame_child.grid(row=neural_net // 10, column=neural_net % 10, sticky='wens')
 
         def update_nns(self) -> None:
                 for child in self.nn_list.winfo_children():
@@ -297,7 +302,7 @@ class App(tk.Frame):
 
                                 self.neural_nets.append(nn)
 
-                                frame_child = tk.Button(
+                                frame_child = ttk.Button(
                                         self.nn_list,
                                         text=self.neural_nets.index(nn)
                                 )
@@ -323,14 +328,38 @@ class App(tk.Frame):
                         accelerator='Cmd-O' if platform.system() == 'Darwin' else 'Ctrl-O',
                 )
 
+                self.menu_file.add_command(
+                        label='Generate Neural Nets',
+                        command=self.generate_nns,
+                        accelerator='Cmd-N' if platform.system() == 'Darwin' else 'Ctrl-N',
+                )
+
                 self.menu.add_cascade(label='File', menu=self.menu_file)
 
                 # ================
 
-                self.nn_list = tk.Scrollbar(
+                self.menu_run = tk.Menu(self.menu, tearoff=0)
+                
+                self.menu_run.add_command(
+                        label='Do Epochs',
+                        command=self.evolve_thread,
+                        accelerator='Cmd-Enter' if platform.system() == 'Darwin' else 'Ctrl-Enter',
+                )
+
+                self.menu.add_cascade(label='Run', menu=self.menu_run)
+
+                # ================
+
+                # self.nn_list = tk.Scrollbar(
+                #         self,
+                #         width=(root.winfo_width()),
+                #         bd=1, bg='white',
+                # )
+
+                self.nn_list = ttk.Frame(
                         self,
-                        width=(root.winfo_width()),
-                        bd=1, bg='white',
+                        width=(root.winfo_width()), height=(root.winfo_width()),
+                        relief='solid'
                 )
 
                 self.nn_list.grid(
@@ -351,12 +380,13 @@ class App(tk.Frame):
 
                 # ================
 
-                self.button_gen_nns = tk.Button(
+                self.button_gen_nns = ttk.Button(
                         self, text='Generate Neural Nets',
-                        command=self.generate_nns
+                        command=self.generate_nns,
+                        default='active',
                 ).grid(row=1, column=0)
 
-                self.entry_gen_nns = tk.Spinbox(
+                self.entry_gen_nns = ttk.Spinbox(
                         self, textvariable=self.max_nns,
                         from_=1, to=25
                 )
@@ -365,44 +395,45 @@ class App(tk.Frame):
 
                 self.entry_gen_nns.grid(row=1, column=1)
 
-                self.label_do_epoch = tk.Label(
-                        self, text='Do Epoch(s): '
+                self.label_do_epoch = ttk.Label(
+                        self, text='Do Epochs: '
                 ).grid(row=2, column=0)
 
-                self.entry_do_epoch = tk.Spinbox(
+                self.entry_do_epoch = ttk.Spinbox(
                         self, textvariable=self.epochs,
                         from_=1, to=10
                 )
                 
                 self.entry_do_epoch.grid(row=2, column=1)
 
-                self.button_do_epoch = tk.Button(
+                self.button_do_epoch = ttk.Button(
                         self, text='Run',
-                        command=self.evolve_thread
+                        command=self.evolve_thread,
+                        default='active',
                 ).grid(row=2, column=2)
 
-                self.button_stop_epoch = tk.Button(
+                self.button_stop_epoch = ttk.Button(
                         self, text='Stop'
                 ).grid(row=2, column=3)
 
                 # ================
 
-                self.button_weight_mutation_rate = tk.Label(
+                self.button_weight_mutation_rate = ttk.Label(
                         self, text='Weight Mutation Rate',
                 ).grid(row=3, column=0)
 
-                self.entry_weight_mutation_rate = tk.Spinbox(
+                self.entry_weight_mutation_rate = ttk.Spinbox(
                         self, textvariable=self.weight_mutation_rate,
                         from_=1, to=100
                 )
 
                 self.entry_weight_mutation_rate.grid(row=3, column=1)
 
-                self.button_bias_mutation_rate = tk.Label(
+                self.button_bias_mutation_rate = ttk.Label(
                         self, text='Bias Mutation Rate',
                 ).grid(row=3, column=2)
 
-                self.entry_bias_mutation_rate = tk.Spinbox(
+                self.entry_bias_mutation_rate = ttk.Spinbox(
                         self, textvariable=self.bias_mutation_rate,
                         from_=1, to=100
                 )
@@ -411,22 +442,22 @@ class App(tk.Frame):
 
                 # ================
 
-                self.button_weight_mutation_scale = tk.Label(
+                self.button_weight_mutation_scale = ttk.Label(
                         self, text='Weight Mutation Scale',
                 ).grid(row=4, column=0)
 
-                self.entry_weight_mutation_scale = tk.Spinbox(
+                self.entry_weight_mutation_scale = ttk.Spinbox(
                         self, textvariable=self.weight_mutation_scale,
                         from_=1, to=10
                 )
 
                 self.entry_weight_mutation_scale.grid(row=4, column=1)
 
-                self.button_bias_mutation_scale = tk.Label(
+                self.button_bias_mutation_scale = ttk.Label(
                         self, text='Bias Mutation Scale',
                 ).grid(row=4, column=2)
 
-                self.entry_bias_mutation_scale = tk.Spinbox(
+                self.entry_bias_mutation_scale = ttk.Spinbox(
                         self, textvariable=self.bias_mutation_scale,
                         from_=1, to=10
                 )
@@ -435,19 +466,19 @@ class App(tk.Frame):
 
                 # ================
 
-                self.button_save_nns = tk.Button(
+                self.button_save_nns = ttk.Button(
                         self, text='Save Neural Nets',
                         command=self.save_nns
                 ).grid(row=5, column=0, columnspan=2)
 
-                self.button_load_nns = tk.Button(
+                self.button_load_nns = ttk.Button(
                         self, text='Load Neural Nets',
                         command=self.load_nns
                 ).grid(row=5, column=2, columnspan=2)
 
                 # ================
 
-                self.info_generation = tk.Label(
+                self.info_generation = ttk.Label(
                         self, text=f'Generation: {self.generations}'
                 ).grid(row=6, column=0)
 
@@ -456,6 +487,8 @@ class App(tk.Frame):
                 self.root.config(menu=self.menu)
                 self.root.bind_all('<Command-s>' if platform.system() == 'Darwin' else '<Control-s>', lambda event: self.save_nns())
                 self.root.bind_all('<Command-o>' if platform.system() == 'Darwin' else '<Control-o>', lambda event: self.load_nns())
+                self.root.bind_all('<Command-n>' if platform.system() == 'Darwin' else '<Control-n>', lambda event: self.generate_nns())
+                self.root.bind_all('<Command-Enter>' if platform.system() == 'Darwin' else '<Control-Enter>', lambda event: self.evolve_thread())
 
 root = tk.Tk()
 root.title('DigiPlay Control Panel')
